@@ -1,0 +1,6 @@
+/*Centramos el gráfico*/
+
+#line-chart {
+  width: 50%;
+  margin: 0 auto;
+}
