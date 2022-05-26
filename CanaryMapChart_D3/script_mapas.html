@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Mapa Islas geo250</title>
+    <style>
+    div.tooltip {
+    position: absolute;
+    text-align: center;
+    width: 60px;
+    height: auto;
+    padding: 2px;
+    font: 12px sans-serif;
+    background: lightsteelblue;
+    border: 0px;
+    border-radius: 8px;
+    pointer-events: none;
+}
+    </style>
+  </head>
+  <body>
+    <script data-require="d3@4.0.0" data-semver="4.0.0" src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="https://d3js.org/d3-array.v1.min.js"></script>
+    <script src="https://d3js.org/d3-geo.v1.min.js"></script>
+    <script src="https://d3js.org/d3-geo-projection.v2.min.js"></script>
+    <script src="https://d3js.org/queue.v1.min.js"></script>
+    <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+    <script>
+      d3.select("body").append("h1").text("Prueba con grid 250");
+      var width = 960, height = 500;
+      //Se usa una escala logarítmica para el colorf
+      var color = d3.scaleLog()
+    .base(10)
+    .domain([1,20])
+    .range(["lightblue","darkblue"]);
+
+
+      var svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height);
+        //Se crea un div para la etiqueta flotante.
+        var div = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
+      //objectmapa tiene que contener el array de características de los elementos path
+      var objectmapa;
+
+      //Carga de datos de geometría e indicadores.
+       //Se utiliza la función queue para realizar una carga asíncrona
+       //Se programa la función ready que se ejecuta cuando termina la carga de datos
+       //Se pueden cargar varios ficheros, en este caso se fusionaron los datos y la geometríaf
+       //en un único objeto geoJson
+      queue(1)
+        .defer(d3.json, "grid250Canarias_poblacion.geojson")
+        .await(ready);
+
+        //Función de callback cuando se cargan los datos de geometría e indicadores
+    function ready(error, json0) {
+      if (error) return console.error(error);
+
+      objectmapa = json0;
+      console.debug('prueba', objectmapa)
+      var scale  = 1;
+      //Función de proyección
+      var projection = d3.geoMercator()
+          .center([-15.749, 28.536]) //elegidas las coordenadas para centrar el mapa.
+          .scale(scale); //podemos utilizar un factor de escala
+    projection.fitSize([width, height], objectmapa)
+
+      //Generador de caminos, requiere la proyección.
+      var path = d3.geoPath()
+        .projection(projection)
+
+      var graticule = d3.geoGraticule();
+
+      svg.append("path")
+        .datum(graticule)
+        .attr("class", "graticule")
+        .attr("d", path);
+
+
+      //Agregamos los caminos con los datos del mapa
+      var u = svg
+               .selectAll('path')
+               .data(objectmapa.features);
+
+    //Se añaden los path a la etiqueta svg
+    //El atributo d de cada etiqueta path se asocia a los path creados con geoPath
+    //(var path = d3.geoPath(projection))
+    //el color de reslleno se asocia con los valores del indicador correspondiente
+     u.enter()
+          .append('path')
+          .attr('d', path)
+          .attr("fill", function(d){
+              var value = Math.log(d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_PC_65mas);
+              return color(value);
+          })
+          .on("mouseover", function(d) {
+            div.transition()
+                .duration(200)
+                .style("opacity", .9);
+            div	.html(d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_MUNICIPIO+ "<br/>" +  '% Jovenes 0-14 años:' +
+            d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_PC_00a14 + '<br/>' + '% Mayores +65 años:' +
+            d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_PC_65mas + '<br/>' + '% Personas 15-64 años:' +
+            d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_PC_15a64)
+                .style("left", (d3.event.pageX) + "px")
+                .style("top", (d3.event.pageY - 28) + "px")
+                .style('width', 90+'px');
+            })
+            .on("mouseout", function(d) {
+              div.transition()
+                  .duration(500)
+                  .style("opacity", 0);
+          })
+          .on("click", function(d){
+                          /*console.log();*/
+                          console.log('Municipio', d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_MUNICIPIO)
+                          console.log('Nº Hombres',d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_Hombres)
+                          console.log('Nº Mujeres', d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_Mujeres)
+                          console.log('Nº Extranjeros',d.properties.PMH_SD_20170101_Indicadores_Descarga_ISB_ULL_Extranjeros)
+                                  });
+      }
+    </script>
+
+  </body>
+</html>
